@@ -147,7 +147,7 @@ function getSyncStatus() {
   return !!syncStatusBlock;
 }
 
-async function sync() {
+export async function sync() {
   await setSyncStatus(true);
   console.log({
     'auth': getAuth(),
