@@ -1,0 +1,21 @@
+{
+  "name": "roam-matter",
+  "version": "1.0.0",
+  "description": "The Matter Roam plugin",
+  "main": "./build/main.js",
+  "scripts": {
+    "build": "roamjs-scripts build",
+    "prebuild:roam": "npm install",
+    "build:roam": "cross-env ROAM_MARKETPLACE=true roamjs-scripts build",
+    "dev:roam": "cross-env ROAM_MARKETPLACE=true roamjs-scripts dev",
+    "dev": "roamjs-scripts dev"
+  },
+  "license": "MIT",
+  "devDependencies": {
+    "roamjs-scripts": "^0.19.11"
+  },
+  "dependencies": {
+    "qrcode.react": "^3.1.0",
+    "roamjs-components": "^0.67.1"
+  }
+}
