@@ -6,7 +6,7 @@ import CustomPanel from "roamjs-components/components/ConfigPanels/CustomPanel";
 import SelectPanel from "roamjs-components/components/ConfigPanels/SelectPanel";
 import getBasicTreeByParentUid from 'roamjs-components/queries/getBasicTreeByParentUid';
 import getPageUidByPageTitle from 'roamjs-components/queries/getPageUidByPageTitle';
-import Auth from "./Auth";
+import Auth from "./components/Auth";
 import { Annotation, authedRequest, ENDPOINTS, FeedEntry, FeedResponse, Tag } from "./api";
 import getSettingValueFromTree from "roamjs-components/util/getSettingValueFromTree";
 import setInputSetting from "roamjs-components/util/setInputSetting";
