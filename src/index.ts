@@ -20,19 +20,29 @@ const syncIntervalKey = "sync interval";
 const syncStatusMessage = "Sync in progress...";
 const maxNumWrites = 20;
 
+declare global {
+  interface Window {
+    roamMatterSyncInterval: number;
+    roamMatterIsSyncing: boolean;
+  }
+}
+
 interface Auth {
   access_token: string;
   refresh_token: string;
 }
 
 const syncIntervals: {[key: string]: number} = {
+  "Manual": -1,
+  "Every half hour": 30,
   "Every hour": 60,
+  "Every 12 hours": 60 * 12,
+  "Every 24 hours": 60 * 24,
 }
 
 export default runExtension({
   extensionId,
   run: async () => {
-    console.log('roam-matter loaded')
     await createConfigObserver({ title: configPage, config: {
       tabs: [
         {
@@ -64,8 +74,20 @@ export default runExtension({
       label: "Sync with Matter",
       callback: sync,
     });
+
+
+    await setSyncStatus(false);
+
+    const syncInterval = getSyncInterval();
+    if (syncInterval > 0) {
+      console.log('setting interval', syncInterval * 60 * 1000)
+      window.roamMatterSyncInterval = setInterval(sync, syncInterval * 60 * 1000);
+    }
+
+    console.log('roam-matter loaded')
   },
   unload: () => {
+    clearInterval(window.roamMatterSyncInterval);
     console.log('roam-matter unloaded')
   },
 });
@@ -121,6 +143,7 @@ async function setLastSync(date: Date) {
 }
 
 async function setSyncStatus(value: boolean) {
+  window.roamMatterIsSyncing = value;
   const configPageUid = getPageUidByPageTitle(configPage)
   const blocks = getBasicTreeByParentUid(configPageUid);
   const syncStatusBlock = blocks.find(b => b.text === syncStatusMessage);
