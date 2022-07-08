@@ -71,7 +71,7 @@ export default function Auth(props: any) {
   return (
     <div>
       <p>Scan this QR code in the Matter app</p>
-      <p>Go to Profile &gt; Settings &gt; Connected Accounts &gt; Roam</p>
+      <p>Go to Settings &gt; Connected Accounts &gt; Roam</p>
       {sessionToken &&
         <QRCodeSVG value={sessionToken} />
       }
