@@ -6,6 +6,7 @@ out
 .env.local
 extension.js
 extension.js.LICENSE.txt
+main.js.LICENSE.txt
 report.html
 stats.json
 main.js
