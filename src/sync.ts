@@ -75,7 +75,7 @@ async function pageAnnotations(): Promise<boolean> {
 }
 
 async function handleFeedEntry(feedEntry: FeedEntry): Promise<boolean> {
-  const pageTitle = `${feedEntry.content.title} (Matter)`;
+  const pageTitle = `${feedEntry.content.title} #[[Matter]]`;
 
   let pageUid = getPageUidByPageTitle(pageTitle);
   if (pageUid) {
