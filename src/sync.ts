@@ -131,15 +131,17 @@ async function renderPage(feedEntry: FeedEntry, pageUid: string) {
   });
 
   // Published Date
-  const publicationDate = new Date(feedEntry.content.publication_date);
-  const publicationDateStr = publicationDate.toISOString().slice(0, 10);
-  await createBlock({
-    parentUid: pageUid,
-    order: 3,
-    node: {
-      text: `Published Date:: ${publicationDateStr}`
-    }
-  });
+  if (feedEntry.content.publication_date) {
+    const publicationDate = new Date(feedEntry.content.publication_date);
+    const publicationDateStr = publicationDate.toISOString().slice(0, 10);
+    await createBlock({
+      parentUid: pageUid,
+      order: 3,
+      node: {
+        text: `Published Date:: ${publicationDateStr}`
+      }
+    });
+  }
 
   appendAnnotationsToPage(pageUid, feedEntry.content.my_annotations);
 }
