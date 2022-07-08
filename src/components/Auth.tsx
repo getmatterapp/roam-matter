@@ -3,7 +3,7 @@ import { QRCodeSVG } from 'qrcode.react';
 import getSettingValueFromTree from 'roamjs-components/util/getSettingValueFromTree';
 import { fetchQRSessionToken, pollQRLoginExchange } from '../auth';
 import setInputSetting from 'roamjs-components/util/setInputSetting';
-import { shouldSync, sync } from '..';
+import { shouldSync, sync } from '../sync';
 
 const Button = (window as any).Blueprint.Core.Button;
 
