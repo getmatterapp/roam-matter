@@ -1,7 +1,7 @@
 {
   "name": "roam-matter",
   "version": "1.0.0",
-  "description": "The Matter Roam plugin",
+  "description": "The Matter Roam extension",
   "main": "./build/main.js",
   "scripts": {
     "build": "roamjs-scripts build",
