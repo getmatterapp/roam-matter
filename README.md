@@ -1,6 +1,6 @@
 # Matter Roam Plugin
 
-Sync all of your [Matter](https://hq.getmatter.app) highlights and notes directly to your Roam knowledge graph.
+Sync all of your [Matter](https://hq.getmatter.com) highlights and notes directly to your Roam knowledge graph.
 
 ## Usage
 
@@ -15,5 +15,5 @@ Sync all of your [Matter](https://hq.getmatter.app) highlights and notes directl
 After the initial setup, Matter will automatically sync in the background.
 
 ## Questions or need help?
-* Say hello at hello@getmatter.app
+* Say hello at hello@getmatter.com
 * Send feedback directly in the Matter app (Settings -> Send feedback)
