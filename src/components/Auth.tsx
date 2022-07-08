@@ -3,7 +3,7 @@ import { QRCodeSVG } from 'qrcode.react';
 import getSettingValueFromTree from 'roamjs-components/util/getSettingValueFromTree';
 import { fetchQRSessionToken, pollQRLoginExchange } from '../auth';
 import setInputSetting from 'roamjs-components/util/setInputSetting';
-import { sync } from '..';
+import { shouldSync } from '..';
 
 function useAuth(parentUid: string, key: string) {
   const [loaded, setLoaded] = useState(false);
@@ -20,7 +20,7 @@ function useAuth(parentUid: string, key: string) {
       const data = JSON.parse(dataStr);
       setAccessToken(data.access_token);
       setRefreshToken(data.refresh_token);
-      sync();
+      shouldSync();
     }
 
     setLoaded(true);

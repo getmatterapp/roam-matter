@@ -75,22 +75,31 @@ export default runExtension({
       callback: sync,
     });
 
-
+    window.roamMatterSyncInterval = setInterval(shouldSync, 60 * 1000) as any;
     await setSyncStatus(false);
-
-    const syncInterval = getSyncInterval();
-    if (syncInterval > 0) {
-      console.log('setting interval', syncInterval * 60 * 1000)
-      window.roamMatterSyncInterval = setInterval(sync, syncInterval * 60 * 1000);
-    }
-
-    console.log('roam-matter loaded')
   },
   unload: () => {
-    clearInterval(window.roamMatterSyncInterval);
-    console.log('roam-matter unloaded')
+    if (window.roamMatterSyncInterval) {
+      clearInterval(window.roamMatterSyncInterval);
+    }
   },
 });
+
+export function shouldSync() {
+  const now = new Date();
+  const lastSync = getLastSync();
+
+  if (lastSync) {
+    const diffMs = (now as any) - (lastSync as any)
+    const diffS = diffMs / 1000;
+    const diffM = diffS / 60;
+    if (diffM >= getSyncInterval()) {
+      sync();
+    }
+  } else {
+    sync();
+  }
+}
 
 function getSetupTree() {
   return getSubTree({
@@ -171,14 +180,11 @@ function getSyncStatus() {
 }
 
 export async function sync() {
-  await setSyncStatus(true);
-  console.log({
-    'auth': getAuth(),
-    'syncInterval': getSyncInterval(),
-    'lastSync': getLastSync(),
-    'isSyncing': getSyncStatus(),
-  });
+  if (window.roamMatterIsSyncing) {
+    return;
+  }
 
+  await setSyncStatus(true);
   try {
     const complete = await pageAnnotations();
     await setLastSync(new Date());
@@ -190,13 +196,6 @@ export async function sync() {
   } catch (error) {
     console.error(error);
   }
-
-  console.log({
-    'auth': getAuth(),
-    'syncInterval': getSyncInterval(),
-    'lastSync': getLastSync(),
-    'isSyncing': getSyncStatus(),
-  });
 }
 
 async function pageAnnotations(): Promise<boolean> {
@@ -242,7 +241,6 @@ async function handleFeedEntry(feedEntry: FeedEntry): Promise<boolean> {
     }
 
     if (annotations.length) {
-      console.log('Appending', annotations)
       await appendAnnotationsToPage(pageUid, annotations);
       return true
     }
@@ -379,6 +377,11 @@ async function _refreshTokenExchange() {
     body: JSON.stringify({ refresh_token: auth.refresh_token })
   });
   const payload = await response.json();
-  console.log('Refreshed token', payload);
-  console.error('Token refresh not implemented');
+
+  const setupTree = getSetupTree();
+  setInputSetting({
+    blockUid: setupTree.uid,
+    key: authConfigKey,
+    value: JSON.stringify(payload)
+  });
 }
