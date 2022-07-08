@@ -3,7 +3,9 @@ import { QRCodeSVG } from 'qrcode.react';
 import getSettingValueFromTree from 'roamjs-components/util/getSettingValueFromTree';
 import { fetchQRSessionToken, pollQRLoginExchange } from '../auth';
 import setInputSetting from 'roamjs-components/util/setInputSetting';
-import { shouldSync } from '..';
+import { shouldSync, sync } from '..';
+
+const Button = (window as any).Blueprint.Core.Button;
 
 function useAuth(parentUid: string, key: string) {
   const [loaded, setLoaded] = useState(false);
@@ -35,6 +37,7 @@ function useAuth(parentUid: string, key: string) {
         key,
         value: JSON.stringify(response)
       });
+      shouldSync();
     }
   }
 
@@ -65,7 +68,19 @@ export default function Auth(props: any) {
   }, [isAuthed, loaded]);
 
   if (isAuthed) {
-    return <p>✅</p>
+    return (
+      <div>
+        <p>✅ Successfully Authenticated</p>
+        <Button
+          text="Sync Now"
+          onClick={() => {
+            if (!window.roamMatterIsSyncing) {
+              sync();
+            }
+          }}
+        />
+      </div>
+    );
   }
 
   return (

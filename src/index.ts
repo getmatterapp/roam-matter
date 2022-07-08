@@ -1,17 +1,17 @@
-import toConfigPageName from "roamjs-components/util/toConfigPageName";
-import runExtension from "roamjs-components/util/runExtension";
-import { createConfigObserver } from "roamjs-components/components/ConfigPage";
-import { CustomField, Field, SelectField } from "roamjs-components/components/ConfigPanels/types";
+import Auth from "./components/Auth";
 import CustomPanel from "roamjs-components/components/ConfigPanels/CustomPanel";
 import SelectPanel from "roamjs-components/components/ConfigPanels/SelectPanel";
 import getBasicTreeByParentUid from 'roamjs-components/queries/getBasicTreeByParentUid';
 import getPageUidByPageTitle from 'roamjs-components/queries/getPageUidByPageTitle';
-import Auth from "./components/Auth";
-import { Annotation, authedRequest, ENDPOINTS, FeedEntry, FeedResponse, Tag } from "./api";
 import getSettingValueFromTree from "roamjs-components/util/getSettingValueFromTree";
-import setInputSetting from "roamjs-components/util/setInputSetting";
 import getSubTree from "roamjs-components/util/getSubTree";
+import runExtension from "roamjs-components/util/runExtension";
+import setInputSetting from "roamjs-components/util/setInputSetting";
+import toConfigPageName from "roamjs-components/util/toConfigPageName";
+import { Annotation, authedRequest, ENDPOINTS, FeedEntry, FeedResponse, QRLoginExchangeResponse, Tag } from "./api";
+import { CustomField, Field, SelectField } from "roamjs-components/components/ConfigPanels/types";
 import { createBlock, createPage, deleteBlock } from "roamjs-components/writes";
+import { createConfigObserver } from "roamjs-components/components/ConfigPage";
 
 const configPage = toConfigPageName('matter')
 const extensionId = "roam-matter";
@@ -25,11 +25,6 @@ declare global {
     roamMatterSyncInterval: number;
     roamMatterIsSyncing: boolean;
   }
-}
-
-interface Auth {
-  access_token: string;
-  refresh_token: string;
 }
 
 const syncIntervals: {[key: string]: number} = {
@@ -89,14 +84,20 @@ export function shouldSync() {
   const now = new Date();
   const lastSync = getLastSync();
 
+  let should = false;
   if (lastSync) {
     const diffMs = (now as any) - (lastSync as any)
     const diffS = diffMs / 1000;
     const diffM = diffS / 60;
-    if (diffM >= getSyncInterval()) {
-      sync();
+    const syncInterval = getSyncInterval();
+    if (syncInterval > 0 && diffM >= syncInterval) {
+      should = true;
     }
   } else {
+    should = true;
+  }
+
+  if (should && !window.roamMatterIsSyncing) {
     sync();
   }
 }
@@ -108,7 +109,7 @@ function getSetupTree() {
   })
 }
 
-function getAuth(): Auth | null {
+function getAuth(): QRLoginExchangeResponse | null {
   const setupTree = getSetupTree();
   const dataStr = getSettingValueFromTree({ parentUid: setupTree.uid, key: authConfigKey });
   if (dataStr) {
@@ -172,18 +173,7 @@ async function setSyncStatus(value: boolean) {
   }
 }
 
-function getSyncStatus() {
-  const configPageUid = getPageUidByPageTitle(configPage)
-  const blocks = getBasicTreeByParentUid(configPageUid);
-  const syncStatusBlock = blocks.find(b => b.text === syncStatusMessage);
-  return !!syncStatusBlock;
-}
-
 export async function sync() {
-  if (window.roamMatterIsSyncing) {
-    return;
-  }
-
   await setSyncStatus(true);
   try {
     const complete = await pageAnnotations();
