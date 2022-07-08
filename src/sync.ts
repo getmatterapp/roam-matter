@@ -167,10 +167,10 @@ async function appendAnnotationsToPage(pageUid: string, annotations: Annotation[
   }
 
   for (let annotation of annotations) {
-    const parent = getBasicTreeByParentUid(pageUid);
+    const highlightsParent = getBasicTreeByParentUid(highlightsTreeUid);
     const textBlockUid = await createBlock({
       parentUid: highlightsTreeUid,
-      order: parent.length,
+      order: highlightsParent.length,
       node: {
         text: annotation.text,
       }
