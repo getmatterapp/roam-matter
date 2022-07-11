@@ -11,7 +11,7 @@ import { configPage, authConfigKey, syncIntervalKey, extensionId } from "./const
 export default runExtension({
   extensionId,
   run: async () => {
-    await createConfigObserver({ title: configPage, config: {
+    const { pageUid, observer } = await createConfigObserver({ title: configPage, config: {
       tabs: [
         {
           id: 'setup',
@@ -49,10 +49,16 @@ export default runExtension({
 
     window.roamMatterSyncInterval = setInterval(shouldSync, 60 * 1000) as any;
     await setSyncStatus(false);
+    return {
+      observers: [observer]
+    };
   },
   unload: () => {
     if (window.roamMatterSyncInterval) {
       clearInterval(window.roamMatterSyncInterval);
     }
+    window.roamAlphaAPI.ui.commandPalette.removeCommand({
+      label: "Sync with Matter",
+    });
   },
 });
