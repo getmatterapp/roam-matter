@@ -1,16 +1,17 @@
-import toConfigPageName from "roamjs-components/util/toConfigPageName";
-
+import Extension from "./extension";
 
 declare global {
   interface Window {
-    roamMatterSyncInterval: number;
-    roamMatterIsSyncing: boolean;
+    roamMatter: Extension;
   }
 }
 
-export const configPage = toConfigPageName('matter');
-export const extensionId = "roam-matter";
-export const authConfigKey = "authentication";
-export const syncIntervalKey = "sync interval";
-export const syncStatusMessage = "Sync in progress...";
 export const maxNumWrites = 20;
+
+export const syncIntervals: {[key: string]: number} = {
+  "Manual": -1,
+  "Every half hour": 30,
+  "Every hour": 60,
+  "Every 12 hours": 60 * 12,
+  "Every 24 hours": 60 * 24,
+}
