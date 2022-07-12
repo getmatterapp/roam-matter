@@ -29,8 +29,8 @@ function useAuth(settings: ExtensionSettings) {
       await settings.set('refreshToken', response.refresh_token);
 
       if (response.access_token && window.roamMatter) {
-        window.roamMatter.sync();
         window.roamMatter.startIntervalSync();
+        window.roamMatter.sync();
       }
     }
   }

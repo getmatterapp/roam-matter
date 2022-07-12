@@ -2,7 +2,7 @@ import getBasicTreeByParentUid from "roamjs-components/queries/getBasicTreeByPar
 import getPageUidByPageTitle from "roamjs-components/queries/getPageUidByPageTitle";
 import createBlock from "roamjs-components/writes/createBlock";
 import createPage from "roamjs-components/writes/createPage";
-import { maxNumWrites } from "./constants";
+import { maxNumWrites, syncIntervals } from "./constants";
 import { Annotation, authedRequest, ENDPOINTS, FeedEntry, FeedResponse, Tag } from "./api";
 
 export interface ExtensionAPI {
@@ -59,7 +59,8 @@ export default class Extension {
   public intervalSync() {
     const now = new Date();
     const lastSync = this.getLastSync();
-    const syncInterval = this.settings.get('syncInterval');
+    const syncIntervalKey = this.settings.get('syncInterval');
+    const syncInterval = syncIntervals[syncIntervalKey]
     const isSyncing = this.settings.get('isSyncing');
 
     let should = false;
