@@ -29,7 +29,7 @@ export default class Extension {
       label: "Sync with Matter",
       callback: () => {
         if (!settings.get('isSyncing')) {
-          this.sync();
+          this.sync.bind(this);
         }
       },
     });
