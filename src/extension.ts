@@ -28,8 +28,8 @@ export default class Extension {
     window.roamAlphaAPI.ui.commandPalette.addCommand({
       label: "Sync with Matter",
       callback: () => {
-        if (!settings.get('isSyncing')) {
-          this.sync.bind(this);
+        if (!settings.get('isSyncing') && settings.get('accessToken')) {
+          this.sync();
         }
       },
     });
