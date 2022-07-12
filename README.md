@@ -1,6 +1,8 @@
 # Matter Roam Extension
 
-Sync all of your [Matter](https://hq.getmatter.com) highlights and notes directly to your Roam knowledge graph.
+[Matter](https://hq.getmatter.com) is a new reading app for saving, organizing, consuming, and managing your internet content.
+
+With the [Matter Roam Extension](https://github.com/getmatterapp/roam-matter), you can sync all of your highlights and notes directly to your Roam knowledge graph.
 
 ## Usage
 
