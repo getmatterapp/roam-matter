@@ -73,7 +73,7 @@ export default function Auth({ extensionAPI }: { extensionAPI: ExtensionAPI }) {
   return (
     <div>
       {sessionToken &&
-        <QRCodeSVG value={sessionToken} size={75} />
+        <QRCodeSVG value={sessionToken} size={115} />
       }
     </div>
   );
