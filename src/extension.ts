@@ -4,6 +4,7 @@ import createBlock from "roamjs-components/writes/createBlock";
 import createPage from "roamjs-components/writes/createPage";
 import { maxNumWrites, syncIntervals } from "./constants";
 import { Annotation, authedRequest, ENDPOINTS, FeedEntry, FeedResponse, Tag } from "./api";
+import { RoamBasicNode } from "roamjs-components/types";
 
 export interface ExtensionAPI {
   settings: ExtensionSettings;
@@ -162,7 +163,7 @@ export default class Extension {
       }
 
       if (annotations.length) {
-        await this.appendAnnotationsToPage(pageUid, annotations);
+        await this.appendAnnotationsToPage(pageUid, feedEntry, annotations);
         return true
       }
     } else {
@@ -212,11 +213,14 @@ export default class Extension {
       }
     });
 
-
-    this.appendAnnotationsToPage(pageUid, feedEntry.content.my_annotations);
+    this.appendAnnotationsToPage(pageUid, feedEntry, feedEntry.content.my_annotations);
   }
 
-  private async appendAnnotationsToPage(pageUid: string, annotations: Annotation[]) {
+  private async appendAnnotationsToPage(pageUid: string, feedEntry: FeedEntry, annotations: Annotation[]) {
+    if (!annotations.length) {
+      return;
+    }
+
     annotations = annotations.sort((a, b) => a.word_start - b.word_start);
     const page = getBasicTreeByParentUid(pageUid);
     const parent = page[0];
@@ -224,7 +228,6 @@ export default class Extension {
     const todayPageName = window.roamAlphaAPI.util.dateToPageTitle(new Date());
     const highlightsTreeText = `[[Highlights]] synced from [[Matter]] on [[${todayPageName}]]`;
     const highlightsTree = parent.children.find(n => n.text === highlightsTreeText);
-
     let highlightsTreeUid: string;
     if (highlightsTree) {
       highlightsTreeUid = highlightsTree.uid;
@@ -240,24 +243,101 @@ export default class Extension {
 
     for (let annotation of annotations) {
       const highlightsParent = getBasicTreeByParentUid(highlightsTreeUid);
-      const textBlockUid = await createBlock({
+      const annotationBlockUid = await createBlock({
         parentUid: highlightsTreeUid,
         order: highlightsParent.length,
         node: {
           text: annotation.text,
         }
       });
-
-      if (annotation.note) {
-        await createBlock({
-          parentUid: textBlockUid,
-          order: 0,
-          node: {
-            text: `Note:: ${annotation.note}`,
-          }
-        });
-      }
+      await this.appendAnnotationToJournal(feedEntry, annotation, annotationBlockUid);
     }
+  }
+
+  private async appendAnnotationToJournal(feedEntry: FeedEntry, annotation: Annotation, annotationBlockUid: string) {
+    const createdDate = new Date(annotation.created_date)
+    const journalPageUid = await this.getOrCreateJournalPage(createdDate);
+    const articleBlockUid = await this.getOrCreateJournalArticleBlock(journalPageUid, feedEntry);
+    const articleTree = getBasicTreeByParentUid(articleBlockUid);
+    const refBlockUid = await createBlock({
+      parentUid: articleBlockUid,
+      order: articleTree.length,
+      node: {
+        text: `((${annotationBlockUid}))`,
+      }
+    });
+
+    if (annotation.note) {
+      await createBlock({
+        parentUid: refBlockUid,
+        node: {
+          text: `Note:: ${annotation.note}`,
+        }
+      });
+    }
+
+    await createBlock({
+      parentUid: refBlockUid,
+      node: {
+        text: `Created at ${createdDate.toTimeString().slice(0, 5)}`
+      }
+    });
+  }
+
+  private async getOrCreateJournalPage(date: Date) {
+    const journalPageName = window.roamAlphaAPI.util.dateToPageTitle(date);
+    let journalPageUid = getPageUidByPageTitle(journalPageName);
+    if (!journalPageUid) {
+      journalPageUid = await createPage({
+        title: journalPageName
+      });
+    }
+    return journalPageUid;
+  }
+
+  private async getOrCreateJournalArticleBlock(journalPageUid: string, feedEntry: FeedEntry) {
+    const highlightsBlockUid = await this.getOrCreateJournalHighlightsBlock(journalPageUid);
+    const highlightsBlock = getBasicTreeByParentUid(highlightsBlockUid);
+
+    const articleTreeText = `[[${feedEntry.content.title}]]`;
+    const articleTree = highlightsBlock.find(n => n.text === articleTreeText);
+
+    let articleTreeUid: string;
+    if (articleTree) {
+      articleTreeUid = articleTree.uid;
+    } else {
+      articleTreeUid = await createBlock({
+        parentUid: highlightsBlockUid,
+        order: highlightsBlock.length,
+        node: {
+          text: articleTreeText,
+        }
+      });
+    }
+
+    return articleTreeUid;
+  }
+
+  private async getOrCreateJournalHighlightsBlock(journalPageUid: string) {
+    const journalPage = getBasicTreeByParentUid(journalPageUid);
+
+    const highlightsTreeText = '[[Highlights]] created on [[Matter]]';
+    const highlightsTree = journalPage.find(n => n.text === highlightsTreeText);
+
+    let highlightsTreeUid: string;
+    if (highlightsTree) {
+      highlightsTreeUid = highlightsTree.uid;
+    } else {
+      highlightsTreeUid = await createBlock({
+        parentUid: journalPageUid,
+        order: journalPage.length,
+        node: {
+          text: highlightsTreeText,
+        }
+      });
+    }
+
+    return highlightsTreeUid;
   }
 
   private renderTags(tags: Tag[]): string {
