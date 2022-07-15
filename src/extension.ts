@@ -193,6 +193,8 @@ export default class Extension {
       }
     }
 
+    metablockText = `${metablockText}${this.renderTags(feedEntry.content.tags)}`
+
     const metablockUid = await createBlock({
       parentUid: pageUid,
       order: 0,
@@ -211,31 +213,36 @@ export default class Extension {
     });
 
 
-    await createBlock({
-      parentUid: metablockUid,
-      order: 1,
-      node: {
-        text: `[[Highlights]] synced from [[Matter]]${this.renderTags(feedEntry.content.tags)}`
-      }
-    });
-
     this.appendAnnotationsToPage(pageUid, feedEntry.content.my_annotations);
   }
 
   private async appendAnnotationsToPage(pageUid: string, annotations: Annotation[]) {
     annotations = annotations.sort((a, b) => a.word_start - b.word_start);
     const page = getBasicTreeByParentUid(pageUid);
-    let parent = page[0].children.find(c => c.text.includes('[[Matter]]'));
+    const parent = page[0];
 
-    if (!parent) {
-      return;
+    const todayPageName = window.roamAlphaAPI.util.dateToPageTitle(new Date());
+    const highlightsTreeText = `[[Highlights]] synced from [[Matter]] on [[${todayPageName}]]`;
+    const highlightsTree = parent.children.find(n => n.text === highlightsTreeText);
+
+    let highlightsTreeUid: string;
+    if (highlightsTree) {
+      highlightsTreeUid = highlightsTree.uid;
+    } else {
+      highlightsTreeUid = await createBlock({
+        parentUid: parent.uid,
+        order: parent.children.length,
+        node: {
+          text: highlightsTreeText,
+        }
+      });
     }
 
     for (let annotation of annotations) {
-      parent = page[0].children.find(c => c.text.includes('[[Matter]]'));
+      const highlightsParent = getBasicTreeByParentUid(highlightsTreeUid);
       const textBlockUid = await createBlock({
-        parentUid: parent.uid,
-        order: parent.children.length,
+        parentUid: highlightsTreeUid,
+        order: highlightsParent.length,
         node: {
           text: annotation.text,
         }
