@@ -24,6 +24,7 @@ export interface Tag {
 
 export interface Author {
   any_name: string | null;
+  domain: string | null;
 }
 
 export interface Content {
@@ -33,6 +34,7 @@ export interface Content {
   title: string;
   url: string;
   tags: Tag[];
+  publisher: Author;
 }
 
 export interface FeedEntry {

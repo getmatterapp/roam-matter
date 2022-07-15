@@ -151,7 +151,7 @@ export default class Extension {
   }
 
   private async handleFeedEntry(feedEntry: FeedEntry): Promise<boolean> {
-    const pageTitle = `${feedEntry.content.title} #[[Matter]]`;
+    const pageTitle = `${feedEntry.content.title}`;
     let pageUid = getPageUidByPageTitle(pageTitle);
     if (pageUid) {
       let lastSync = this.getLastSync();
@@ -177,77 +177,65 @@ export default class Extension {
   }
 
   private async renderPage(feedEntry: FeedEntry, pageUid: string) {
-    // Title / URL
-    await createBlock({
+    // If all else fails, publisher.domain will always be set
+    let metablockText;
+    if (feedEntry.content.author) {
+      if (feedEntry.content.author.any_name) {
+        metablockText = `Author [[${feedEntry.content.author.any_name}]]`
+      } else if (feedEntry.content.author.domain) {
+        metablockText = `Author [[${feedEntry.content.author.domain}]]`
+      }
+    } else {
+      if (feedEntry.content.publisher.any_name) {
+        metablockText = `Author [[${feedEntry.content.publisher.any_name}]]`
+      } else {
+        metablockText = `Author [[${feedEntry.content.publisher.domain}]]`
+      }
+    }
+
+    const metablockUid = await createBlock({
       parentUid: pageUid,
+      order: 0,
+      node: {
+        text: metablockText,
+        heading: 3
+      }
+    });
+
+    await createBlock({
+      parentUid: metablockUid,
       order: 0,
       node: {
         text: `Source:: [${feedEntry.content.title}](${feedEntry.content.url})`
       }
     });
 
-    // Author
-    const authorName = feedEntry.content.author ? feedEntry.content.author.any_name : "";
+
     await createBlock({
-      parentUid: pageUid,
+      parentUid: metablockUid,
       order: 1,
       node: {
-        text: `Author:: [[${authorName}]]`
+        text: `[[Highlights]] synced from [[Matter]]${this.renderTags(feedEntry.content.tags)}`
       }
     });
-
-    // Tags
-    await createBlock({
-      parentUid: pageUid,
-      order: 2,
-      node: {
-        text: this.renderTags(feedEntry.content.tags)
-      }
-    });
-
-    // Published Date
-    if (feedEntry.content.publication_date) {
-      const publicationDate = new Date(feedEntry.content.publication_date);
-      const publicationDateStr = publicationDate.toISOString().slice(0, 10);
-      await createBlock({
-        parentUid: pageUid,
-        order: 3,
-        node: {
-          text: `Published Date:: ${publicationDateStr}`
-        }
-      });
-    }
 
     this.appendAnnotationsToPage(pageUid, feedEntry.content.my_annotations);
   }
 
   private async appendAnnotationsToPage(pageUid: string, annotations: Annotation[]) {
     annotations = annotations.sort((a, b) => a.word_start - b.word_start);
-    const parent = getBasicTreeByParentUid(pageUid);
+    const page = getBasicTreeByParentUid(pageUid);
+    let parent = page[0].children.find(c => c.text.includes('[[Matter]]'));
 
-    const todayPageName = window.roamAlphaAPI.util.dateToPageTitle(new Date());
-    const highlightsTreeText = `Highlights synced on [[${todayPageName}]]`;
-    const highlightsTree = parent.find(n => n.text === highlightsTreeText);
-
-    let highlightsTreeUid: string;
-    if (highlightsTree) {
-      highlightsTreeUid = highlightsTree.uid;
-    } else {
-      highlightsTreeUid = await createBlock({
-        parentUid: pageUid,
-        order: parent.length,
-        node: {
-          text: highlightsTreeText,
-          heading: 2
-        }
-      });
+    if (!parent) {
+      return;
     }
 
     for (let annotation of annotations) {
-      const highlightsParent = getBasicTreeByParentUid(highlightsTreeUid);
+      parent = page[0].children.find(c => c.text.includes('[[Matter]]'));
       const textBlockUid = await createBlock({
-        parentUid: highlightsTreeUid,
-        order: highlightsParent.length,
+        parentUid: parent.uid,
+        order: parent.children.length,
         node: {
           text: annotation.text,
         }
@@ -267,17 +255,14 @@ export default class Extension {
 
   private renderTags(tags: Tag[]): string {
     const tagStrs = tags.map(tag => {
-      if (tag.name.includes(' ')) {
-        return `#[[${tag.name}]]`;
-      }
-      return `#${tag.name}`;
+      return `#[[${tag.name}]]`;
     })
 
     if (tagStrs.length) {
-      return `Tags:: ${tagStrs.join(' ')}`
+      return ` ${tagStrs.join(' ')}`
     }
 
-    return "Tags::";
+    return '';
   }
 
   private getLastSync(): Date | null {
