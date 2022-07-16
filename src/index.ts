@@ -9,7 +9,7 @@ interface OnloadArgs {
 
 async function onload({ extensionAPI }: OnloadArgs) {
   if (!extensionAPI.settings.get('syncInterval')) {
-    await extensionAPI.settings.set('syncInterval', 'Every hour');
+    await extensionAPI.settings.set('syncInterval', 'Manual');
   }
 
   window.roamMatter = new Extension(extensionAPI.settings);
@@ -35,6 +35,14 @@ async function onload({ extensionAPI }: OnloadArgs) {
         action: {
           type: "select",
           items: Object.keys(syncIntervals),
+        }
+      },
+      {
+        id: 'syncToDaily',
+        name: 'Sync to Daily Notes',
+        description: 'Track what you read over time. Enable to include block references to highlights in your daily notes.',
+        action: {
+          type: 'switch',
         }
       },
       {

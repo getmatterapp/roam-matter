@@ -30,7 +30,6 @@ function useAuth(settings: ExtensionSettings) {
 
       if (response.access_token && window.roamMatter) {
         window.roamMatter.startIntervalSync();
-        window.roamMatter.sync();
       }
     }
   }

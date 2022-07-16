@@ -6,7 +6,7 @@ With the [Matter Roam Extension](https://github.com/getmatterapp/roam-matter), y
 
 ## Usage
 
-1. Install the Matter extension via the Roam community extensions page
+1. Install the Matter extension via the Roam Depot settings page
 2. Visit the the Matter settings page in Roam
     * Open the Matter application on your phone
     * Go to your Settings > Connected Accounts > Roam

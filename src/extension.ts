@@ -4,7 +4,6 @@ import createBlock from "roamjs-components/writes/createBlock";
 import createPage from "roamjs-components/writes/createPage";
 import { maxNumWrites, syncIntervals } from "./constants";
 import { Annotation, authedRequest, ENDPOINTS, FeedEntry, FeedResponse, Tag } from "./api";
-import { RoamBasicNode } from "roamjs-components/types";
 
 export interface ExtensionAPI {
   settings: ExtensionSettings;
@@ -61,8 +60,12 @@ export default class Extension {
     const now = new Date();
     const lastSync = this.getLastSync();
     const syncIntervalKey = this.settings.get('syncInterval');
-    const syncInterval = syncIntervals[syncIntervalKey]
+    const syncInterval = syncIntervals[syncIntervalKey];
     const isSyncing = this.settings.get('isSyncing');
+
+    if (syncInterval < 0) {
+      return;
+    }
 
     let should = false;
     if (lastSync) {
@@ -250,7 +253,10 @@ export default class Extension {
           text: annotation.text,
         }
       });
-      await this.appendAnnotationToJournal(feedEntry, annotation, annotationBlockUid);
+
+      if (this.settings.get('syncToDaily')) {
+        await this.appendAnnotationToJournal(feedEntry, annotation, annotationBlockUid);
+      }
     }
   }
 
