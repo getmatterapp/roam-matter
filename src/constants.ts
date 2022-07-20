@@ -10,7 +10,7 @@ export const maxNumWrites = 20;
 export const syncJitterRange = 3;
 export const intervalSyncMinutes = 1;
 export const syncCooldownMinutes = 1;
-export const syncStaleMinutes = 3;
+export const syncStaleMinutes = 10;
 export const syncIntervals: {[key: string]: number} = {
   "Manual": -1,
   "Every half hour": 30,

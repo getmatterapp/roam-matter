@@ -370,7 +370,7 @@ export default class Extension {
   private isSyncStale(): boolean {
     const lastHeartbeat = this.getDateSetting('syncHeartbeat');
     if (lastHeartbeat) {
-      return diffInMinutes(new Date(), lastHeartbeat) > syncStaleMinutes;
+      return diffInMinutes(new Date(), lastHeartbeat) > (syncStaleMinutes + this.syncJitter);
     }
     return true;
   }
