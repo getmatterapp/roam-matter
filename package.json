@@ -4,11 +4,9 @@
   "description": "The Matter Roam extension",
   "main": "./build/main.js",
   "scripts": {
-    "build": "roamjs-scripts build",
-    "prebuild:roam": "npm install",
-    "build:roam": "cross-env ROAM_MARKETPLACE=true roamjs-scripts build",
-    "dev:roam": "cross-env ROAM_MARKETPLACE=true roamjs-scripts dev",
-    "dev": "roamjs-scripts dev"
+    "prebuild": "npm install",
+    "build": "cross-env ROAM_MARKETPLACE=true roamjs-scripts build",
+    "dev": "cross-env ROAM_MARKETPLACE=true roamjs-scripts dev"
   },
   "license": "MIT",
   "devDependencies": {

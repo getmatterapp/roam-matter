@@ -2,8 +2,9 @@ import getBasicTreeByParentUid from "roamjs-components/queries/getBasicTreeByPar
 import getPageUidByPageTitle from "roamjs-components/queries/getPageUidByPageTitle";
 import createBlock from "roamjs-components/writes/createBlock";
 import createPage from "roamjs-components/writes/createPage";
-import { maxNumWrites, syncIntervals } from "./constants";
+import { intervalSyncMinutes, maxNumWrites, syncCooldownMinutes, syncIntervals, syncJitterRange, syncStaleMinutes } from "./constants";
 import { Annotation, authedRequest, ENDPOINTS, FeedEntry, FeedResponse, Tag } from "./api";
+import { diffInMinutes, randomInt } from "./utils";
 
 export interface ExtensionAPI {
   settings: ExtensionSettings;
@@ -21,6 +22,7 @@ export interface ExtensionSettings {
 export default class Extension {
   private settings: ExtensionSettings;
   private runningInterval: number;
+  private syncJitter: number = randomInt(syncJitterRange);  // +/- 3 minutes
 
   constructor(settings: ExtensionSettings) {
     this.settings = settings;
@@ -49,54 +51,56 @@ export default class Extension {
   }
 
   public async startIntervalSync() {
-    await this.settings.set('isSyncing', false);
     if (this.runningInterval) {
       clearInterval(this.runningInterval);
     }
-    this.runningInterval = setInterval(this.intervalSync.bind(this), 60 * 1000) as any;
+    this.runningInterval = setInterval(this.intervalSync.bind(this), 60 * intervalSyncMinutes * 1000) as any;
   }
 
   public intervalSync() {
     const now = new Date();
     const lastSync = this.getLastSync();
     const syncIntervalKey = this.settings.get('syncInterval');
-    const syncInterval = syncIntervals[syncIntervalKey];
-    const isSyncing = this.settings.get('isSyncing');
 
+    let syncInterval = syncIntervals[syncIntervalKey];
     if (syncInterval < 0) {
       return;
     }
+    syncInterval += this.syncJitter;
 
     let should = false;
     if (lastSync) {
-      const diffMs = (now as any) - (lastSync as any)
-      const diffS = diffMs / 1000;
-      const diffM = diffS / 60;
-      if (syncInterval > 0 && diffM >= syncInterval) {
+      if (syncInterval > 0 && diffInMinutes(now, lastSync) >= syncInterval) {
         should = true;
       }
     } else {
       should = true;
     }
 
-    if (should && !isSyncing) {
+    const isSyncing = this.settings.get('isSyncing')
+    if (
+      (this.isSyncStale() && isSyncing)  // If a sync has been abandoned, restart the process
+      || (should && !isSyncing)  // If a sync hasn't happened in some time, start a new one
+    ) {
       this.sync();
     }
   }
 
   public async sync() {
-    await this.settings.set('isSyncing', true);
+    this.syncHeartbeat();
+    await this.setIsSyncing(true);
     try {
       const complete = await this.pageAnnotations();
       await this.setLastSync(new Date());
       if (complete) {
-        await this.settings.set('isSyncing', false);
+        await this.setIsSyncing(false);
       } else {
-        setTimeout(this.sync.bind(this), 60 * 1000)
+        setTimeout(this.sync.bind(this), 60 * syncCooldownMinutes * 1000)
       }
     } catch (error) {
       console.error(error);
     }
+    this.syncHeartbeat();
   }
 
   private async pageAnnotations() {
@@ -105,6 +109,7 @@ export default class Extension {
 
     // Load all feed items new to old.
     while (url !== null) {
+      this.syncHeartbeat();
       const response: FeedResponse = await this.authedRequest(url);
       feedEntries = feedEntries.concat(response.feed);
       url = response.next;
@@ -167,7 +172,7 @@ export default class Extension {
 
       if (annotations.length) {
         await this.appendAnnotationsToPage(pageUid, feedEntry, annotations);
-        return true
+        return true;
       }
     } else {
       pageUid = await createPage({
@@ -358,15 +363,39 @@ export default class Extension {
     return '';
   }
 
+  private async syncHeartbeat() {
+    this.setDateSetting('syncHeartbeat', new Date());
+  }
+
+  private isSyncStale(): boolean {
+    const lastHeartbeat = this.getDateSetting('syncHeartbeat');
+    if (lastHeartbeat) {
+      return diffInMinutes(new Date(), lastHeartbeat) > syncStaleMinutes;
+    }
+    return true;
+  }
+
   private getLastSync(): Date | null {
-    const dateStr = this.settings.get('lastSync');
+    return this.getDateSetting('lastSync')
+  }
+
+  private async setLastSync(value: Date) {
+    this.setDateSetting('lastSync', value);
+  }
+
+  private async setIsSyncing(value: boolean) {
+    await this.settings.set('isSyncing', value);
+  }
+
+  private async setDateSetting(key: string, value: Date) {
+    await this.settings.set(key, value.toISOString());
+  }
+
+  private getDateSetting(key: string) {
+    const dateStr = this.settings.get(key);
     if (dateStr) {
       return new Date(dateStr);
     }
     return null;
-  }
-
-  private async setLastSync(value: Date) {
-    await this.settings.set('lastSync', value.toISOString());
   }
 }
