@@ -1,1 +1,1 @@
-npm run build:roam
+npm run build
