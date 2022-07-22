@@ -276,7 +276,6 @@ export default class Extension {
   private annotationAppearsInPage(annotation: Annotation, pageUid: string): boolean {
     const title = getPageTitleByPageUid(pageUid);
     const text = annotation.text.replaceAll('"', '\\"')
-    console.log(text)
     try {
       getBlockUidByTextOnPage({ text, title })
       return true;
