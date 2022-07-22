@@ -48,7 +48,7 @@ async function onload({ extensionAPI }: OnloadArgs) {
       {
         id: "isSyncing",
         name: "Sync Now",
-        description: 'Manually start a sync with Matter',
+        description: 'Manually start a sync with Matter. This can take a while. Even if you don\'t see changes, the sync is running.',
         action: {
           type: 'reactComponent',
           component: wrappedSyncNowButton,

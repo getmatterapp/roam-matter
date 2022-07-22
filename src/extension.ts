@@ -1,5 +1,7 @@
 import getBasicTreeByParentUid from "roamjs-components/queries/getBasicTreeByParentUid";
 import getPageUidByPageTitle from "roamjs-components/queries/getPageUidByPageTitle";
+import getPageTitleByPageUid from "roamjs-components/queries/getPageTitleByPageUid";
+import getBlockUidByTextOnPage from "roamjs-components/queries/getBlockUidByTextOnPage";
 import createBlock from "roamjs-components/writes/createBlock";
 import createPage from "roamjs-components/writes/createPage";
 import { intervalSyncMinutes, maxNumWrites, syncCooldownMinutes, syncIntervals, syncJitterRange, syncStaleMinutes } from "./constants";
@@ -58,6 +60,12 @@ export default class Extension {
   }
 
   public intervalSync() {
+    // If a sync has been abandoned, restart the process
+    if (this.isSyncStale() && this.settings.get('isSyncing')) {
+      this.sync();
+      return;
+    }
+
     const now = new Date();
     const lastSync = this.getLastSync();
     const syncIntervalKey = this.settings.get('syncInterval');
@@ -77,11 +85,8 @@ export default class Extension {
       should = true;
     }
 
-    const isSyncing = this.settings.get('isSyncing')
-    if (
-      (this.isSyncStale() && isSyncing)  // If a sync has been abandoned, restart the process
-      || (should && !isSyncing)  // If a sync hasn't happened in some time, start a new one
-    ) {
+    // If a sync hasn't happened in some time, start a new one
+    if (should && !this.settings.get('isSyncing')) {
       this.sync();
     }
   }
@@ -170,6 +175,8 @@ export default class Extension {
         annotations = annotations.filter(a => new Date(a.created_date) > lastSync);
       }
 
+      annotations = annotations.filter(a => !this.annotationAppearsInPage(a, pageUid))
+
       if (annotations.length) {
         await this.appendAnnotationsToPage(pageUid, feedEntry, annotations);
         return true;
@@ -229,9 +236,10 @@ export default class Extension {
       return;
     }
 
-    annotations = annotations.sort((a, b) => a.word_start - b.word_start);
     const page = getBasicTreeByParentUid(pageUid);
     const parent = page[0];
+
+    annotations = annotations.sort((a, b) => a.word_start - b.word_start);
 
     const todayPageName = window.roamAlphaAPI.util.dateToPageTitle(new Date());
     const highlightsTreeText = `[[Highlights]] synced from [[Matter]] on [[${todayPageName}]]`;
@@ -262,6 +270,16 @@ export default class Extension {
       if (this.settings.get('syncToDaily')) {
         await this.appendAnnotationToJournal(feedEntry, annotation, annotationBlockUid);
       }
+    }
+  }
+
+  private annotationAppearsInPage(annotation: Annotation, pageUid: string): boolean {
+    const pageTitle = getPageTitleByPageUid(pageUid);
+    try {
+      getBlockUidByTextOnPage({ text: annotation.text, title: pageTitle })
+      return true;
+    } catch (e) {
+      return false;
     }
   }
 
