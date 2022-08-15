@@ -228,6 +228,16 @@ export default class Extension {
       }
     });
 
+    if (feedEntry.content.my_note && feedEntry.content.my_note.note) {
+      await createBlock({
+        parentUid: metablockUid,
+        order: 1,
+        node: {
+          text: `Note:: ${feedEntry.content.my_note.note}`
+        }
+      });
+    }
+
     this.appendAnnotationsToPage(pageUid, feedEntry, feedEntry.content.my_annotations);
   }
 

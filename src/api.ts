@@ -27,9 +27,14 @@ export interface Author {
   domain: string | null;
 }
 
+export interface ContentNote {
+  note: string;
+}
+
 export interface Content {
   author: Author;
   my_annotations: Annotation[];
+  my_note: ContentNote;
   publication_date: string;
   title: string;
   url: string;
