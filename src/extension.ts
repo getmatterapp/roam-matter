@@ -141,11 +141,18 @@ export default class Extension {
 
   private async authedRequest(url: string) {
     const accessToken = this.settings.get('accessToken');
+
     try {
       return (await authedRequest(accessToken, url));
     } catch (e) {
-      await this.refreshTokenExchange();
-      return (await authedRequest(accessToken, url));
+      try {
+        await this.refreshTokenExchange();
+        return (await authedRequest(accessToken, url));
+      } catch (error) {
+        await this.settings.set('accessToken', null);
+        await this.settings.set('refreshToken', null);
+        throw error
+      }
     }
   }
 
