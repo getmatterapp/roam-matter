@@ -4,7 +4,7 @@ import getPageTitleByPageUid from "roamjs-components/queries/getPageTitleByPageU
 import getBlockUidByTextOnPage from "roamjs-components/queries/getBlockUidByTextOnPage";
 import createBlock from "roamjs-components/writes/createBlock";
 import createPage from "roamjs-components/writes/createPage";
-import { intervalSyncMinutes, maxNumWrites, syncCooldownMinutes, syncIntervals, syncJitterRange, syncStaleMinutes } from "./constants";
+import { intervalSyncMinutes, maxNumWrites, syncCooldownMinutes, syncIntervals, syncJitterRange, syncLocationArticlePage, syncLocationArticlePageAndDailyNote, syncLocationDailyNote, syncStaleMinutes } from "./constants";
 import { Annotation, authedRequest, ENDPOINTS, FeedEntry, FeedResponse, Tag } from "./api";
 import { diffInMinutes, randomInt } from "./utils";
 
@@ -96,8 +96,8 @@ export default class Extension {
     await this.setIsSyncing(true);
     try {
       const complete = await this.pageAnnotations();
-      await this.setLastSync(new Date());
       if (complete) {
+        await this.setLastSync(new Date());
         await this.setIsSyncing(false);
       } else {
         setTimeout(this.sync.bind(this), 60 * syncCooldownMinutes * 1000)
@@ -172,9 +172,7 @@ export default class Extension {
   }
 
   private async handleFeedEntry(feedEntry: FeedEntry): Promise<boolean> {
-    const pageTitle = `${feedEntry.content.title}`;
-    let pageUid = getPageUidByPageTitle(pageTitle);
-    if (pageUid) {
+    if (this.settings.get('syncLocation') === syncLocationDailyNote) {
       let lastSync = this.getLastSync();
       let annotations = feedEntry.content.my_annotations;
 
@@ -182,40 +180,69 @@ export default class Extension {
         annotations = annotations.filter(a => new Date(a.created_date) > lastSync);
       }
 
-      annotations = annotations.filter(a => !this.annotationAppearsInPage(a, pageUid))
+      let newAnnotations = []
+      for (const annotation of annotations) {
+        const alreadySynced = await this.annotationAppearsInJournalPage(annotation);
+        console.log(annotation, alreadySynced)
+        if (!alreadySynced) {
+          newAnnotations.push(annotation);
+        }
+      }
 
-      if (annotations.length) {
-        await this.appendAnnotationsToPage(pageUid, feedEntry, annotations);
+      if (newAnnotations.length) {
+        await this.appendAnnotationsToJournal(feedEntry, newAnnotations);
         return true;
       }
     } else {
-      pageUid = await createPage({
-        title: pageTitle
-      });
-      await this.renderPage(feedEntry, pageUid);
-      return true;
-    }
+      const pageTitle = `${feedEntry.content.title}`;
+      let pageUid = getPageUidByPageTitle(pageTitle);
+      if (pageUid) {
+        let lastSync = this.getLastSync();
+        let annotations = feedEntry.content.my_annotations;
 
-    return false;
+        if (lastSync) {
+          annotations = annotations.filter(a => new Date(a.created_date) > lastSync);
+        }
+
+        annotations = annotations.filter(a => !this.annotationAppearsInPage(a, pageUid))
+
+        if (annotations.length) {
+          await this.appendAnnotationsToPage(pageUid, feedEntry, annotations);
+          return true;
+        }
+      } else {
+        pageUid = await createPage({
+          title: pageTitle
+        });
+        await this.renderPage(feedEntry, pageUid);
+        return true;
+      }
+
+      return false;
+    }
+  }
+
+  private getContentCreator(feedEntry: FeedEntry) {
+    let creator;
+    if (feedEntry.content.author) {
+      if (feedEntry.content.author.any_name) {
+        creator = `[[${feedEntry.content.author.any_name}]]`
+      } else if (feedEntry.content.author.domain) {
+        creator = `[[${feedEntry.content.author.domain}]]`
+      }
+    } else if (feedEntry.content.newsletter_profile) {
+      creator = `[[${feedEntry.content.newsletter_profile.any_name}]]`
+    } else if (feedEntry.content.publisher.any_name) {
+      creator = `[[${feedEntry.content.publisher.any_name}]]`
+    } else {
+      creator = `[[${feedEntry.content.publisher.domain}]]`
+    }
+    return creator
   }
 
   private async renderPage(feedEntry: FeedEntry, pageUid: string) {
     // If all else fails, publisher.domain will always be set
-    let metablockText;
-    if (feedEntry.content.author) {
-      if (feedEntry.content.author.any_name) {
-        metablockText = `Author [[${feedEntry.content.author.any_name}]]`
-      } else if (feedEntry.content.author.domain) {
-        metablockText = `Author [[${feedEntry.content.author.domain}]]`
-      }
-    } else {
-      if (feedEntry.content.publisher.any_name) {
-        metablockText = `Author [[${feedEntry.content.publisher.any_name}]]`
-      } else {
-        metablockText = `Author [[${feedEntry.content.publisher.domain}]]`
-      }
-    }
-
+    let metablockText = `Author ${this.getContentCreator(feedEntry)}`;
     metablockText = `${metablockText}${this.renderTags(feedEntry.content.tags)}`
 
     const metablockUid = await createBlock({
@@ -246,6 +273,42 @@ export default class Extension {
     }
 
     this.appendAnnotationsToPage(pageUid, feedEntry, feedEntry.content.my_annotations);
+  }
+
+  private async appendAnnotationsToJournal(feedEntry: FeedEntry, annotations: Annotation[]) {
+    if (!annotations.length) {
+      return;
+    }
+
+    for (const annotation of annotations) {
+      const createdDate = new Date(annotation.created_date)
+      const journalPageUid = await this.getOrCreateJournalPage(createdDate);
+      const articleBlockUid = await this.getOrCreateJournalArticleBlock(journalPageUid, feedEntry);
+      const articleTree = getBasicTreeByParentUid(articleBlockUid);
+      const highlightBlockUid = await createBlock({
+        parentUid: articleBlockUid,
+        order: articleTree.length,
+        node: {
+          text: annotation.text,
+        }
+      });
+
+      if (annotation.note) {
+        await createBlock({
+          parentUid: highlightBlockUid,
+          node: {
+            text: `Note:: ${annotation.note}`,
+          }
+        });
+      }
+
+      await createBlock({
+        parentUid: highlightBlockUid,
+        node: {
+          text: `Created at ${createdDate.toTimeString().slice(0, 5)}`
+        }
+      });
+    }
   }
 
   private async appendAnnotationsToPage(pageUid: string, feedEntry: FeedEntry, annotations: Annotation[]) {
@@ -284,8 +347,18 @@ export default class Extension {
         }
       });
 
-      if (this.settings.get('syncToDaily')) {
-        await this.appendAnnotationToJournal(feedEntry, annotation, annotationBlockUid);
+      // If not syncing to the daily note, sync any annotation notes here.
+      if (annotation.note && this.settings.get('syncLocation') === syncLocationArticlePage) {
+        await createBlock({
+          parentUid: annotationBlockUid,
+          node: {
+            text: `Note:: ${annotation.note}`,
+          }
+        });
+      }
+
+      if (this.settings.get('syncLocation') === syncLocationArticlePageAndDailyNote) {
+        await this.appendPageAnnotationToJournal(feedEntry, annotation, annotationBlockUid);
       }
     }
   }
@@ -294,17 +367,30 @@ export default class Extension {
     const title = getPageTitleByPageUid(pageUid).replaceAll('"', '\\"');
     const text = annotation.text.replaceAll('"', '\\"')
     try {
-      getBlockUidByTextOnPage({ text, title })
-      return true;
+      if (getBlockUidByTextOnPage({ text, title })) {
+        return true;
+      } else {
+        return false;
+      }
     } catch (e) {
       return false;
     }
   }
 
-  private async appendAnnotationToJournal(feedEntry: FeedEntry, annotation: Annotation, annotationBlockUid: string) {
+  private async annotationAppearsInJournalPage(annotation: Annotation): Promise<boolean> {
+    const createdDate = new Date(annotation.created_date)
+    const journalPageName = window.roamAlphaAPI.util.dateToPageTitle(createdDate);
+    let journalPageUid = getPageUidByPageTitle(journalPageName);
+    if (!journalPageUid) {
+      return false;
+    }
+    return this.annotationAppearsInPage(annotation, journalPageUid);
+  }
+
+  private async appendPageAnnotationToJournal(feedEntry: FeedEntry, annotation: Annotation, annotationBlockUid: string) {
     const createdDate = new Date(annotation.created_date)
     const journalPageUid = await this.getOrCreateJournalPage(createdDate);
-    const articleBlockUid = await this.getOrCreateJournalArticleBlock(journalPageUid, feedEntry);
+    const articleBlockUid = await this.getOrCreateJournalArticleReferenceBlock(journalPageUid, feedEntry);
     const articleTree = getBasicTreeByParentUid(articleBlockUid);
     const refBlockUid = await createBlock({
       parentUid: articleBlockUid,
@@ -343,6 +429,35 @@ export default class Extension {
   }
 
   private async getOrCreateJournalArticleBlock(journalPageUid: string, feedEntry: FeedEntry) {
+    const highlightsBlockUid = await this.getOrCreateJournalHighlightsBlock(journalPageUid);
+    const highlightsBlock = getBasicTreeByParentUid(highlightsBlockUid);
+
+    let articleTreeText = `${feedEntry.content.title}`;
+    if (feedEntry.content.url) {
+      articleTreeText = `[${articleTreeText}](${feedEntry.content.url})`;
+    }
+
+    articleTreeText += ` by ${this.getContentCreator(feedEntry)}`;
+    articleTreeText += this.renderTags(feedEntry.content.tags);
+
+    const articleTree = highlightsBlock.find(n => n.text === articleTreeText);
+    let articleTreeUid: string;
+    if (articleTree) {
+      articleTreeUid = articleTree.uid;
+    } else {
+      articleTreeUid = await createBlock({
+        parentUid: highlightsBlockUid,
+        order: highlightsBlock.length,
+        node: {
+          text: articleTreeText,
+        }
+      });
+    }
+
+    return articleTreeUid;
+  }
+
+  private async getOrCreateJournalArticleReferenceBlock(journalPageUid: string, feedEntry: FeedEntry) {
     const highlightsBlockUid = await this.getOrCreateJournalHighlightsBlock(journalPageUid);
     const highlightsBlock = getBasicTreeByParentUid(highlightsBlockUid);
 

@@ -32,7 +32,7 @@ export interface ContentNote {
 }
 
 export interface Content {
-  author: Author;
+  author?: Author;
   my_annotations: Annotation[];
   my_note: ContentNote;
   publication_date: string;
@@ -40,6 +40,7 @@ export interface Content {
   url: string;
   tags: Tag[];
   publisher: Author;
+  newsletter_profile: Author;
 }
 
 export interface FeedEntry {
