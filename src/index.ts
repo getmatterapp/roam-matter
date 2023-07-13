@@ -1,6 +1,6 @@
 import Auth from "./components/Auth";
 import SyncNowButton from "./components/SyncNowButton";
-import { syncIntervals } from "./constants";
+import { syncIntervals, syncLocationArticlePage, syncLocationArticlePageAndDailyNote, syncLocations } from "./constants";
 import Extension, { ExtensionAPI } from "./extension";
 
 interface OnloadArgs {
@@ -10,6 +10,22 @@ interface OnloadArgs {
 async function onload({ extensionAPI }: OnloadArgs) {
   if (!extensionAPI.settings.get('syncInterval')) {
     await extensionAPI.settings.set('syncInterval', 'Manual');
+  }
+
+  // Migrate from old syncToDaily setting to new syncLocation setting
+  let syncToDaily = extensionAPI.settings.get('syncToDaily')
+  if (syncToDaily !== null) {
+    if (syncToDaily) {
+      await extensionAPI.settings.set('syncLocation', syncLocationArticlePageAndDailyNote);
+    } else {
+      await extensionAPI.settings.set('syncLocation', syncLocationArticlePage);
+    }
+    await extensionAPI.settings.set('syncToDaily', null);
+  }
+
+  // Set a default sync location if none is set
+  if (!extensionAPI.settings.get('syncLocation')) {
+    await extensionAPI.settings.set('syncLocation', syncLocationArticlePageAndDailyNote);
   }
 
   window.roamMatter = new Extension(extensionAPI.settings);
@@ -38,11 +54,12 @@ async function onload({ extensionAPI }: OnloadArgs) {
         }
       },
       {
-        id: 'syncToDaily',
-        name: 'Sync to Daily Notes',
-        description: 'Track what you read over time. Enable to include block references to highlights in your daily notes.',
+        id: 'syncLocation',
+        name: 'Sync Location',
+        description: 'Where your Matter highlights will be synced to.',
         action: {
-          type: 'switch',
+          type: "select",
+          items: syncLocations,
         }
       },
       {
