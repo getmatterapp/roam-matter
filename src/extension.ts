@@ -183,7 +183,6 @@ export default class Extension {
       let newAnnotations = []
       for (const annotation of annotations) {
         const alreadySynced = await this.annotationAppearsInJournalPage(annotation);
-        console.log(annotation, alreadySynced)
         if (!alreadySynced) {
           newAnnotations.push(annotation);
         }
