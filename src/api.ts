@@ -39,7 +39,7 @@ export interface Content {
   title: string;
   url: string;
   tags: Tag[];
-  publisher: Author;
+  publisher?: Author;
   newsletter_profile: Author;
 }
 

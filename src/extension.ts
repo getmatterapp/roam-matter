@@ -221,8 +221,8 @@ export default class Extension {
     }
   }
 
-  private getContentCreator(feedEntry: FeedEntry) {
-    let creator;
+  private getContentCreator(feedEntry: FeedEntry): string | null {
+    let creator = null;
     if (feedEntry.content.author) {
       if (feedEntry.content.author.any_name) {
         creator = `[[${feedEntry.content.author.any_name}]]`
@@ -231,19 +231,27 @@ export default class Extension {
       }
     } else if (feedEntry.content.newsletter_profile) {
       creator = `[[${feedEntry.content.newsletter_profile.any_name}]]`
-    } else if (feedEntry.content.publisher.any_name) {
-      creator = `[[${feedEntry.content.publisher.any_name}]]`
-    } else {
-      creator = `[[${feedEntry.content.publisher.domain}]]`
+    } else if (feedEntry.content.publisher) {
+      if (feedEntry.content.publisher.any_name) {
+        creator = `[[${feedEntry.content.publisher.any_name}]]`
+      } else {
+        creator = `[[${feedEntry.content.publisher.domain}]]`
+      }
     }
     return creator
   }
 
   private async renderPage(feedEntry: FeedEntry, pageUid: string) {
-    // If all else fails, publisher.domain will always be set
-    let metablockText = `Author ${this.getContentCreator(feedEntry)}`;
-    metablockText = `${metablockText}${this.renderTags(feedEntry.content.tags)}`
+    let creator = this.getContentCreator(feedEntry);
 
+    let metablockText = '';
+    if (creator) {
+      metablockText = `Author ${creator}`;
+    } else {
+      metablockText = `Metadata`;
+    }
+
+    metablockText = `${metablockText}${this.renderTags(feedEntry.content.tags)}`
     const metablockUid = await createBlock({
       parentUid: pageUid,
       order: 0,
