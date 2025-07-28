@@ -9,7 +9,7 @@ With the [Matter Roam Extension](https://github.com/getmatterapp/roam-matter), y
 1. Install the Matter extension via the Roam Depot settings page
 2. Visit the the Matter settings page in Roam
     * Open the Matter application on your phone
-    * Go to your Settings > Connected Accounts > Roam
+    * Go to your Settings > Integrations > Roam
     * Press "Scan QR Code" and scan the QR code in the Matter settings page of Roam
 4. Configure the extension if desired
 5. Start Syncing!
